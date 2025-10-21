@@ -30,7 +30,7 @@ function CadastroAgenda() {
   }
 
   return (
-    <div className="card center" style={{ maxWidth: 720, margin: '28px auto' }}>
+    <div className="card center" style={{ maxWidth: 720, margin: '100px auto' }}>
       <form onSubmit={cadastrar} className="form-card">
         <h3>Adicionar Evento na Agenda</h3>
         <label>Usuário</label>
