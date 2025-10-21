@@ -55,7 +55,7 @@ async function buscarAgendaUsuario(usuarioId, data) {
 
 function PointFlow() {
   const [atividades, setAtividades] = useState([]);
-  const [showScanner, setShowScanner] = useState(false);
+  const [showScanner, setShowScanner] = useState(true); // Inicia com câmera aberta
   const [mensagem, setMensagem] = useState("");
   const [tipoPonto, setTipoPonto] = useState("");
   const [fade, setFade] = useState("in");
@@ -87,17 +87,6 @@ function PointFlow() {
     await registrarPonto(usuarioId, proximoTipo);
   }
 
-  function iniciarScanner() {
-    setFade("out");
-    setTimeout(() => {
-      setShowScanner(true);
-      setMensagem("");
-      setAtividades([]);
-      setTipoPonto("");
-      setFade("in");
-    }, 300);
-  }
-
   async function destroyScanner() {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
@@ -127,7 +116,7 @@ function PointFlow() {
             await destroyScanner();
             setShowScanner(false);
             setFade("in");
-            buscarAtividades(qrCodeMessage);
+            await buscarAtividades(qrCodeMessage);
           },
           errorMessage => {}
         )
@@ -137,13 +126,6 @@ function PointFlow() {
           setShowScanner(false);
           setFade("in");
         });
-
-      timeoutRef.current = setTimeout(async () => {
-        await destroyScanner();
-        setShowScanner(false);
-        setFade("in");
-        setMensagem("Tempo esgotado. Por favor, tente novamente.");
-      }, 10000);
 
       return () => { destroyScanner(); };
     } else { destroyScanner(); }
@@ -158,6 +140,7 @@ function PointFlow() {
           setAtividades([]);
           setMensagem("");
           setTipoPonto("");
+          setShowScanner(true); // Reinicia o scanner após fechar a agenda
           setFade("in");
         }, 300);
       }, 15000);
@@ -177,6 +160,7 @@ function PointFlow() {
       setAtividades([]);
       setMensagem("");
       setTipoPonto("");
+      setShowScanner(true); // Reinicia o scanner ao voltar
       setFade("in");
     }, 300);
   }
@@ -192,20 +176,14 @@ function PointFlow() {
           <h2 style={{ textAlign: 'center', marginBottom: 10 }}>PointFlow</h2>
           <div style={{ textAlign: 'center', color: 'var(--senac-yellow)', fontWeight: 700, marginBottom: showScanner ? 20 : 8 }}>Controle de Ponto Inteligente Senac</div>
 
-          {!showScanner && atividades.length === 0 && (
-            <div>
-              <button className="btn btn-primary" style={{ padding: '16px 0', fontSize: '1.05em' }} onClick={iniciarScanner}>Registrar Entrada/Saída</button>
-              {mensagem && <div style={{ color: 'var(--senac-yellow)', textAlign: 'center', marginTop: 12 }}>{mensagem}</div>}
-            </div>
-          )}
-
-          {showScanner && (
+          {showScanner && atividades.length === 0 && (
             <div style={{ textAlign: 'center' }}>
               <div id="reader" style={{ width: 300, height: 300, margin: '0 auto', borderRadius: 16, background: '#0b1120', display: 'flex', alignItems: 'center', justifyContent: 'center' }}></div>
               <div style={{ marginTop: 18, color: 'var(--text-muted)' }}>
                 <div style={{ background: 'linear-gradient(90deg,var(--senac-yellow) 40%, var(--senac-blue) 60%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 700 }}>Aponte o QR Code do seu crachá</div>
-                <div style={{ color: 'var(--senac-yellow)', marginTop: 8, opacity: 0.9 }}>(Você tem 10 segundos para leitura)</div>
+                <div style={{ color: 'var(--senac-yellow)', marginTop: 8, opacity: 0.9 }}>Câmera pronta para leitura</div>
               </div>
+              {mensagem && <div style={{ color: '#fc5050', textAlign: 'center', marginTop: 12, fontSize: '0.95em' }}>{mensagem}</div>}
             </div>
           )}
 
