@@ -53,11 +53,41 @@ async function buscarAgendaUsuario(usuarioId, data) {
   return eventos || [];
 }
 
+// Calcula total de horas na agenda do dia
+function calcularTotalHoras(eventos) {
+  if (!eventos || eventos.length === 0) return 0;
+  
+  // Agrupa eventos em blocos contínuos (ex: 08:00-12:00, 13:00-17:00)
+  const horarios = eventos.map(e => {
+    const [h, m] = e.hora.split(':').map(Number);
+    return h + m / 60; // Converte para decimal (ex: 08:30 = 8.5)
+  }).sort((a, b) => a - b);
+
+  let totalHoras = 0;
+  let inicio = horarios[0];
+  let ultimo = horarios[0];
+
+  for (let i = 1; i < horarios.length; i++) {
+    // Se a diferença for maior que 1 hora, considera um novo bloco
+    if (horarios[i] - ultimo > 1) {
+      totalHoras += ultimo - inicio;
+      inicio = horarios[i];
+    }
+    ultimo = horarios[i];
+  }
+  
+  // Adiciona o último bloco
+  totalHoras += ultimo - inicio;
+  
+  return Math.round(totalHoras * 10) / 10; // Arredonda para 1 casa decimal
+}
+
 function PointFlow() {
   const [atividades, setAtividades] = useState([]);
   const [showScanner, setShowScanner] = useState(true); // Inicia com câmera aberta
   const [mensagem, setMensagem] = useState("");
   const [tipoPonto, setTipoPonto] = useState("");
+  const [totalHorasDia, setTotalHorasDia] = useState(0);
   const [fade, setFade] = useState("in");
   const html5QrCodeRef = useRef(null);
   const timeoutRef = useRef(null);
@@ -71,6 +101,11 @@ function PointFlow() {
     // Busca agenda personalizada do usuário
     let eventos = await buscarAgendaUsuario(usuarioId, hoje);
     setAtividades(eventos);
+    
+    // Calcula total de horas se houver eventos
+    const totalHoras = calcularTotalHoras(eventos);
+    setTotalHorasDia(totalHoras);
+    
     if (!eventos.length) {
       setMensagem("Nenhuma atividade cadastrada para hoje.");
     }
@@ -140,6 +175,7 @@ function PointFlow() {
           setAtividades([]);
           setMensagem("");
           setTipoPonto("");
+          setTotalHorasDia(0);
           setShowScanner(true); // Reinicia o scanner após fechar a agenda
           setFade("in");
         }, 300);
@@ -160,6 +196,7 @@ function PointFlow() {
       setAtividades([]);
       setMensagem("");
       setTipoPonto("");
+      setTotalHorasDia(0);
       setShowScanner(true); // Reinicia o scanner ao voltar
       setFade("in");
     }, 300);
@@ -191,8 +228,38 @@ function PointFlow() {
             <div style={{ marginTop: 18 }}>
               <h3 style={{ textAlign: 'center', marginBottom: 12 }}>Atividades do Dia</h3>
               <div style={{ textAlign: 'center', marginBottom: 8 }}>
-                <span style={{ color: tipoPonto === 'entrada' ? 'var(--accent)' : '#fc5050', fontWeight: 800 }}>{tipoPonto === 'entrada' ? 'Ponto registrado como ENTRADA' : tipoPonto === 'saida' ? 'Ponto registrado como SAÍDA' : ''}</span>
+                <span style={{ color: tipoPonto === 'entrada' ? 'var(--accent)' : '#fc5050', fontWeight: 800 }}>
+                  {tipoPonto === 'entrada' ? 'Ponto registrado como ENTRADA' : tipoPonto === 'saida' ? 'Ponto registrado como SAÍDA' : ''}
+                </span>
               </div>
+              
+              {tipoPonto === 'saida' && totalHorasDia > 0 && (
+                <div style={{ 
+                  textAlign: 'center', 
+                  marginBottom: 16, 
+                  padding: '12px', 
+                  background: 'linear-gradient(135deg, rgba(249, 178, 51, 0.15), rgba(23, 64, 140, 0.15))',
+                  borderRadius: 12,
+                  border: '2px solid var(--senac-yellow)'
+                }}>
+                  <div style={{ color: 'var(--senac-yellow)', fontSize: '0.9em', marginBottom: 4 }}>
+                    📊 HOJE SEU DIA TEVE
+                  </div>
+                  <div style={{ 
+                    fontSize: '1.8em', 
+                    fontWeight: 900, 
+                    background: 'linear-gradient(90deg, var(--senac-yellow) 30%, var(--accent) 70%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent'
+                  }}>
+                    {totalHorasDia} {totalHorasDia === 1 ? 'HORA' : 'HORAS'}
+                  </div>
+                  <div style={{ color: 'var(--senac-yellow)', fontSize: '0.85em', marginTop: 4, opacity: 0.9 }}>
+                    registradas na sua agenda
+                  </div>
+                </div>
+              )}
+              
               <ul className="activity-list">
                 {atividades.map((a, i) => (
                   <li key={i} className="activity-item">
