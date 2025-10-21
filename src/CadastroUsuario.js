@@ -31,7 +31,7 @@ function CadastroUsuario() {
   }
 
   return (
-    <div className="card center" style={{ maxWidth: 640, margin: '40px auto' }}>
+    <div className="card center" style={{ maxWidth: 640, margin: '100px auto' }}>
       <form onSubmit={cadastrar} className="form-card">
         <h3>Cadastro de Usuário</h3>
         <label>Nome</label>
