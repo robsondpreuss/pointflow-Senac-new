@@ -118,7 +118,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
   box-shadow: 0 8px 30px rgba(0,0,0,0.45);
 }
 .nav-links { display:flex; gap:10px; align-items:center }
-.nav-links .btn { padding:8px 12px; border-radius:8px }
+.nav-links .btn { width: 150px; padding:8px 12px; border-radius:8px }
 
 .hero { display:flex; gap:24px; align-items:flex-start; justify-content:center; padding:34px; border-radius:18px; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); }
 .hero-left { flex:1; max-width:720px }
