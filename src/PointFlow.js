@@ -94,6 +94,8 @@ function PointFlow() {
   const [fade, setFade] = useState("in");
   const [pontoRegistrado, setPontoRegistrado] = useState(false); // NOVO: controla exibição
   const [cameraAtiva, setCameraAtiva] = useState(""); // NOVO: indica qual câmera está ativa
+  const [camerasDisponiveis, setCamerasDisponiveis] = useState([]); // Lista de câmeras
+  const [cameraIdAtual, setCameraIdAtual] = useState(null); // ID da câmera atual
   const html5QrCodeRef = useRef(null);
   const timeoutRef = useRef(null);
   const agendaTimeoutRef = useRef(null);
@@ -202,7 +204,42 @@ function PointFlow() {
       const scanner = new Html5Qrcode("reader");
       html5QrCodeRef.current = scanner;
 
-      // Função para tentar iniciar o scanner
+      // Função para tentar iniciar o scanner com ID de câmera específico
+      const tentarIniciarCameraComId = async (cameraId, nomeCam) => {
+        try {
+          console.log(`🎥 Tentando câmera: ${nomeCam} (ID: ${cameraId})`);
+          await scanner.start(
+            cameraId,
+            { fps: 10, qrbox: 220 },
+            async qrCodeMessage => {
+              if (!scannerAtivo.current || !mounted) {
+                console.log("⚠️ Scanner já foi parado, ignorando leitura");
+                return;
+              }
+
+              console.log("📸 QR Code lido:", qrCodeMessage);
+
+              // Para o scanner antes de processar
+              await destroyScanner();
+              setShowScanner(false);
+              setFade("in");
+
+              // Aguarda um pouco antes de processar
+              await new Promise(resolve => setTimeout(resolve, 300));
+              await buscarAtividades(qrCodeMessage);
+            },
+            errorMessage => { }
+          );
+          console.log(`✅ Câmera ${nomeCam} iniciada com sucesso`);
+          setCameraAtiva(nomeCam);
+          return true;
+        } catch (err) {
+          console.log(`⚠️ Falha ao usar câmera ${nomeCam}:`, err.message);
+          return false;
+        }
+      };
+
+      // Função para tentar iniciar o scanner com facingMode
       const tentarIniciarCamera = async (facingMode) => {
         try {
           console.log(`🎥 Tentando câmera: ${facingMode}`);
@@ -238,13 +275,76 @@ function PointFlow() {
       };
 
       try {
-        // Tenta primeiro a câmera frontal (user)
-        let sucesso = await tentarIniciarCamera("user");
+        // Tenta enumerar as câmeras disponíveis
+        let sucesso = false;
 
-        // Se falhar, tenta a câmera traseira (environment)
+        try {
+          const cameras = await Html5Qrcode.getCameras();
+          console.log("📹 Câmeras disponíveis:", cameras);
+
+          // Salva as câmeras disponíveis
+          if (cameras && cameras.length > 0) {
+            setCamerasDisponiveis(cameras);
+          }
+
+          if (cameras && cameras.length > 0) {
+            // Se já temos um ID de câmera selecionado (após troca), usa ele
+            if (cameraIdAtual) {
+              const cameraEscolhida = cameras.find(cam => cam.id === cameraIdAtual);
+              if (cameraEscolhida) {
+                console.log("🎯 Usando câmera selecionada:", cameraEscolhida.label);
+                const nomeCam = cameraEscolhida.label.toLowerCase().includes('back') ||
+                  cameraEscolhida.label.toLowerCase().includes('rear') ?
+                  "traseira" : "frontal";
+                sucesso = await tentarIniciarCameraComId(cameraEscolhida.id, nomeCam);
+              }
+            }
+
+            // Se não tinha câmera selecionada, procura por câmera frontal primeiro
+            if (!sucesso) {
+              const cameraFrontal = cameras.find(cam =>
+                cam.label.toLowerCase().includes('front') ||
+                cam.label.toLowerCase().includes('frontal') ||
+                cam.label.toLowerCase().includes('user') ||
+                cam.label.toLowerCase().includes('face')
+              );
+
+              if (cameraFrontal) {
+                console.log("🎯 Câmera frontal encontrada:", cameraFrontal.label);
+                sucesso = await tentarIniciarCameraComId(cameraFrontal.id, "frontal");
+                if (sucesso) setCameraIdAtual(cameraFrontal.id);
+              }
+            }
+
+            // Se não encontrou ou falhou, tenta a primeira câmera (geralmente frontal em tablets)
+            if (!sucesso && cameras.length > 0) {
+              console.log("🔄 Tentando primeira câmera disponível...");
+              sucesso = await tentarIniciarCameraComId(cameras[0].id, cameras[0].label.includes('back') ? "traseira" : "frontal");
+              if (sucesso) setCameraIdAtual(cameras[0].id);
+            }
+
+            // Se ainda não funcionou, tenta a segunda câmera
+            if (!sucesso && cameras.length > 1) {
+              console.log("🔄 Tentando segunda câmera disponível...");
+              sucesso = await tentarIniciarCameraComId(cameras[1].id, cameras[1].label.includes('back') ? "traseira" : "frontal");
+              if (sucesso) setCameraIdAtual(cameras[1].id);
+            }
+          }
+        } catch (enumError) {
+          console.log("⚠️ Não foi possível enumerar câmeras:", enumError.message);
+        }
+
+        // Fallback para o método antigo se enumeração falhar
         if (!sucesso) {
-          console.log("🔄 Tentando câmera traseira...");
-          sucesso = await tentarIniciarCamera("environment");
+          console.log("🔄 Usando método de fallback com facingMode...");
+          // Tenta primeiro a câmera frontal (user)
+          sucesso = await tentarIniciarCamera("user");
+
+          // Se falhar, tenta a câmera traseira (environment)
+          if (!sucesso) {
+            console.log("🔄 Tentando câmera traseira...");
+            sucesso = await tentarIniciarCamera("environment");
+          }
         }
 
         // Se nenhuma funcionar, mostra erro
@@ -319,6 +419,35 @@ function PointFlow() {
     }, 300);
   }
 
+  async function trocarCamera() {
+    if (camerasDisponiveis.length < 2) {
+      console.log("⚠️ Apenas uma câmera disponível");
+      return;
+    }
+
+    console.log("🔄 Trocando de câmera...");
+
+    // Para o scanner atual
+    await destroyScanner();
+
+    // Encontra a próxima câmera
+    const currentIndex = camerasDisponiveis.findIndex(cam => cam.id === cameraIdAtual);
+    const nextIndex = (currentIndex + 1) % camerasDisponiveis.length;
+    const nextCamera = camerasDisponiveis[nextIndex];
+
+    console.log("📹 Mudando para:", nextCamera.label);
+
+    // Reinicia o scanner com a nova câmera
+    setShowScanner(true);
+    setCameraIdAtual(nextCamera.id);
+
+    // Força reinicialização
+    setTimeout(() => {
+      setShowScanner(false);
+      setTimeout(() => setShowScanner(true), 100);
+    }, 100);
+  }
+
   return (
     <div className="main-container">
       <div style={bgAnim}></div>
@@ -338,6 +467,15 @@ function PointFlow() {
                 <div style={{ color: 'var(--senac-yellow)', marginTop: 8, opacity: 0.9 }}>
                   {cameraAtiva ? `Câmera ${cameraAtiva} ativa` : 'Iniciando câmera...'}
                 </div>
+                {camerasDisponiveis.length > 1 && (
+                  <button
+                    className="btn btn-ghost"
+                    onClick={trocarCamera}
+                    style={{ marginTop: 12, width: '150px', fontSize: '0.9em' }}
+                  >
+                    🔄 Trocar Câmera
+                  </button>
+                )}
               </div>
               {mensagem && <div style={{ color: '#fc5050', textAlign: 'center', marginTop: 12, fontSize: '0.95em' }}>{mensagem}</div>}
             </div>
