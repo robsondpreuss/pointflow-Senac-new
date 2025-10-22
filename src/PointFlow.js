@@ -205,7 +205,7 @@ function PointFlow() {
   return (
     <div className="main-container">
       <div style={bgAnim}></div>
-      <div className={fade === "in" ? "fade-in" : "fade-out"} style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className={fade === "in" ? "fade-in" : "fade-out"} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div className="card" style={{ width: '100%', maxWidth: 640, margin: '40px auto' }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
             <img src={senacLogo} alt="Senac" style={{ height: 48, filter: 'drop-shadow(0 0 10px #f9b233cc) brightness(1.1)' }} />
