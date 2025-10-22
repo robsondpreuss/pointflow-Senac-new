@@ -40,16 +40,21 @@ async function registrarPonto(usuario, tipo) {
 
 // Busca agenda personalizada do usuário para a data
 async function buscarAgendaUsuario(usuarioId, data) {
+  console.log("🔎 Parametros busca - usuario_id:", usuarioId, "data:", data);
+  
   const { data: eventos, error } = await supabase
     .from("agenda")
     .select("hora, descricao")
     .eq("usuario_id", usuarioId)
     .eq("data", data)
     .order("hora", { ascending: true });
+  
   if (error) {
-    console.log("Erro ao buscar agenda:", error.message);
+    console.error("❌ Erro ao buscar agenda:", error);
     return [];
   }
+  
+  console.log("✅ Resultado da query:", eventos);
   return eventos || [];
 }
 
@@ -95,15 +100,22 @@ function PointFlow() {
 
   async function buscarAtividades(qrCodeMessage) {
     const usuarioId = qrCodeMessage.trim();
+    console.log("🔍 Buscando atividades para:", usuarioId);
+    
     // Data de hoje (YYYY-MM-DD)
     const hoje = new Date().toISOString().slice(0,10);
+    console.log("📅 Data de hoje:", hoje);
 
     // Busca agenda personalizada do usuário
     let eventos = await buscarAgendaUsuario(usuarioId, hoje);
+    console.log("📋 Eventos encontrados:", eventos);
+    console.log("📊 Quantidade de eventos:", eventos?.length || 0);
+    
     setAtividades(eventos);
     
     // Calcula total de horas se houver eventos
     const totalHoras = calcularTotalHoras(eventos);
+    console.log("⏱️ Total de horas:", totalHoras);
     setTotalHorasDia(totalHoras);
     
     if (!eventos.length) {
