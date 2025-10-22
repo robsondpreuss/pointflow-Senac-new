@@ -265,7 +265,7 @@ input:focus, select:focus, textarea:focus {
   align-items: flex-start;
   justify-content: center;
   min-height: 100vh;
-  padding-top: 80px;
+  padding-top: 120px;
   padding-bottom: 40px;
   overflow-y: auto;
 }
