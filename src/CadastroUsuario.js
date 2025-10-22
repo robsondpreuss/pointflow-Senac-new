@@ -53,18 +53,23 @@ function CadastroUsuario() {
 
   async function verAgenda(usuario) {
     setUsuarioSelecionado(usuario);
-    const hoje = new Date().toISOString().slice(0, 10);
+    
+    // Usa data local ao invés de UTC para evitar problemas de timezone
+    const hoje = new Date();
+    const dataLocal = hoje.getFullYear() + '-' + 
+                     String(hoje.getMonth() + 1).padStart(2, '0') + '-' + 
+                     String(hoje.getDate()).padStart(2, '0');
     
     console.log("🔍 [POPUP] Buscando agenda para usuário:");
     console.log("  - Nome:", usuario.nome);
     console.log("  - usuario.id:", usuario.id, "tipo:", typeof usuario.id);
-    console.log("  - Data:", hoje);
+    console.log("  - Data (local):", dataLocal);
     
     const { data: eventos, error } = await supabase
       .from("agenda")
       .select("hora, descricao")
       .eq("usuario_id", usuario.id)
-      .eq("data", hoje)
+      .eq("data", dataLocal)
       .order("hora", { ascending: true });
     
     console.log("📋 [POPUP] Resultado da busca:");

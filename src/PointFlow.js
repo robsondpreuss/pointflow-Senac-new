@@ -102,12 +102,15 @@ function PointFlow() {
     const usuarioId = qrCodeMessage.trim();
     console.log("🔍 Buscando atividades para:", usuarioId);
     
-    // Data de hoje (YYYY-MM-DD)
-    const hoje = new Date().toISOString().slice(0,10);
-    console.log("📅 Data de hoje:", hoje);
+    // Usa data local ao invés de UTC para evitar problemas de timezone
+    const hoje = new Date();
+    const dataLocal = hoje.getFullYear() + '-' + 
+                     String(hoje.getMonth() + 1).padStart(2, '0') + '-' + 
+                     String(hoje.getDate()).padStart(2, '0');
+    console.log("📅 Data de hoje (local):", dataLocal);
 
     // Busca agenda personalizada do usuário
-    let eventos = await buscarAgendaUsuario(usuarioId, hoje);
+    let eventos = await buscarAgendaUsuario(usuarioId, dataLocal);
     console.log("📋 Eventos encontrados:", eventos);
     console.log("📊 Quantidade de eventos:", eventos?.length || 0);
     
