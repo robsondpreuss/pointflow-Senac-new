@@ -14,7 +14,9 @@
 
 body {
   background: linear-gradient(120deg, var(--bg-1) 0%, var(--senac-blue) 50%, var(--senac-yellow) 100%);
-  max-height: 100vh;
+  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
   color: var(--text-light);
   margin: 0;
@@ -23,7 +25,12 @@ body {
 
 .main-container {
   max-width: 980px;
-  margin: 28px auto;
+  margin: 0 auto;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
 }
 
 .card {
@@ -111,13 +118,35 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 
 /* Navbar & Hero */
 .navbar {
-  position:fixed; left:0; right:0; top:12px; margin:0 auto; z-index:50;
-  display:flex; align-items:center; justify-content:space-between; gap:12px; max-width:1100px;
-  padding: 12px 20px; background: linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)); border-radius: 14px;
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 12px;
+  margin: 0 auto;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 1100px;
+  padding: 12px 20px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  border-radius: 14px;
   box-shadow: 0 8px 30px rgba(0,0,0,0.45);
 }
-.nav-links { display:flex; gap:10px; align-items:center }
-.nav-links .btn { width: 150px; padding:8px 12px; border-radius:8px }
+.nav-links {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.nav-links .btn {
+  width: 150px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 .hero { display:flex; gap:24px; align-items:flex-start; justify-content:center; padding:34px; border-radius:18px; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); }
 .hero-left { flex:1; max-width:720px }
@@ -193,5 +222,15 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* Center page main area */
-.page-wrapper { display:flex; align-items:center; justify-content:center; min-height: calc(100vh - 140px); padding-top: 80px; }
-.center-card { width:100%; max-width:760px; }
+.page-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding-top: 80px;
+  overflow-y: auto;
+}
+.center-card {
+  width: 100%;
+  max-width: 760px;
+}
