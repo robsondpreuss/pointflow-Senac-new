@@ -114,6 +114,28 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 @media (max-width: 720px) {
   .menu { grid-template-columns: 1fr; }
   .main-container { padding: 12px; }
+  
+  .navbar {
+    flex-direction: column;
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  
+  .brand {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .nav-links {
+    width: 100%;
+    flex-direction: column;
+    gap: 6px;
+  }
+  
+  .nav-links .btn {
+    width: 100%;
+    padding: 10px 12px;
+  }
 }
 
 /* Navbar & Hero */
@@ -216,8 +238,17 @@ input:focus, select:focus, textarea:focus {
 
 @media (max-width: 600px) {
   .main-container {
-    padding: 16px 4px;
+    padding: 12px 4px;
     max-width: 98vw;
+  }
+  
+  body {
+    overflow-y: auto;
+  }
+  
+  .page-wrapper {
+    padding-top: 200px;
+    padding-bottom: 20px;
   }
 }
 
