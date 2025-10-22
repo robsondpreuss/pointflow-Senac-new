@@ -55,6 +55,11 @@ function CadastroUsuario() {
     setUsuarioSelecionado(usuario);
     const hoje = new Date().toISOString().slice(0, 10);
     
+    console.log("🔍 [POPUP] Buscando agenda para usuário:");
+    console.log("  - Nome:", usuario.nome);
+    console.log("  - usuario.id:", usuario.id, "tipo:", typeof usuario.id);
+    console.log("  - Data:", hoje);
+    
     const { data: eventos, error } = await supabase
       .from("agenda")
       .select("hora, descricao")
@@ -62,8 +67,17 @@ function CadastroUsuario() {
       .eq("data", hoje)
       .order("hora", { ascending: true });
     
+    console.log("📋 [POPUP] Resultado da busca:");
+    console.log("  - Erro:", error);
+    console.log("  - Eventos encontrados:", eventos);
+    console.log("  - Quantidade:", eventos?.length || 0);
+    
     if (!error) {
       setAgendaPopup(eventos || []);
+      setMostrarPopup(true);
+    } else {
+      console.error("❌ [POPUP] Erro ao buscar agenda:", error);
+      setAgendaPopup([]);
       setMostrarPopup(true);
     }
   }
