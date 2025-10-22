@@ -5,7 +5,8 @@ function CadastroAgenda() {
   const [usuarios, setUsuarios] = useState([]);
   const [usuarioId, setUsuarioId] = useState("");
   const [data, setData] = useState("");
-  const [hora, setHora] = useState("");
+  const [horaInicio, setHoraInicio] = useState("");
+  const [horaFim, setHoraFim] = useState("");
   const [descricao, setDescricao] = useState("");
   const [mensagem, setMensagem] = useState("");
   const [eventosRecentes, setEventosRecentes] = useState([]);
@@ -27,9 +28,9 @@ function CadastroAgenda() {
         usuarios:usuario_id (nome)
       `)
       .order("data", { ascending: false })
-      .order("hora", { ascending: false })
+      .order("hora_inicio", { ascending: false })
       .limit(10);
-    
+
     if (!error) {
       console.log("📋 Eventos cadastrados no banco:", eventos);
       setEventosRecentes(eventos || []);
@@ -40,25 +41,27 @@ function CadastroAgenda() {
 
   async function cadastrar(e) {
     e.preventDefault();
-    
+
     console.log("📝 Tentando cadastrar evento:");
     console.log("  - usuario_id:", usuarioId, "tipo:", typeof usuarioId);
     console.log("  - data:", data);
-    console.log("  - hora:", hora);
+    console.log("  - hora_inicio:", horaInicio);
+    console.log("  - hora_fim:", horaFim);
     console.log("  - descricao:", descricao);
-    
+
     const { data: resultado, error } = await supabase.from("agenda").insert([
-      { usuario_id: usuarioId, data, hora, descricao }
+      { usuario_id: usuarioId, data, hora_inicio: horaInicio, hora_fim: horaFim, descricao }
     ]).select();
-    
+
     if (error) {
       console.error("❌ Erro ao cadastrar:", error);
       setMensagem("Erro ao cadastrar: " + error.message);
     } else {
       console.log("✅ Evento cadastrado com sucesso:", resultado);
       setMensagem("Evento cadastrado com sucesso!");
-      setData(""); 
-      setHora(""); 
+      setData("");
+      setHoraInicio("");
+      setHoraFim("");
       setDescricao("");
       carregarEventosRecentes();
     }
@@ -81,8 +84,12 @@ function CadastroAgenda() {
                 <input type="date" value={data} onChange={e => setData(e.target.value)} required />
               </div>
               <div style={{ flex: 1 }}>
-                <label>Hora</label>
-                <input type="time" value={hora} onChange={e => setHora(e.target.value)} required />
+                <label>Hora Início</label>
+                <input type="time" value={horaInicio} onChange={e => setHoraInicio(e.target.value)} required />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label>Hora Fim</label>
+                <input type="time" value={horaFim} onChange={e => setHoraFim(e.target.value)} required />
               </div>
             </div>
             <label>Descrição</label>
@@ -95,9 +102,9 @@ function CadastroAgenda() {
         {eventosRecentes.length > 0 && (
           <div className="card" style={{ maxWidth: 720, margin: '0 auto' }}>
             <h3 style={{ textAlign: 'center', marginBottom: 16 }}>Últimos Eventos Cadastrados</h3>
-            <div style={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
               gap: 8,
               maxHeight: '400px',
               overflowY: 'auto',
@@ -122,21 +129,21 @@ function CadastroAgenda() {
                     </span>
                   </div>
                   <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                    <span style={{ 
-                      minWidth: 60, 
-                      fontWeight: 800, 
+                    <span style={{
+                      minWidth: 100,
+                      fontWeight: 800,
                       color: 'var(--senac-yellow)',
                       fontSize: '0.9em'
                     }}>
-                      {evento.hora}
+                      {evento.hora_inicio} - {evento.hora_fim}
                     </span>
                     <span style={{ color: 'var(--text-muted)', fontSize: '0.95em' }}>
                       {evento.descricao}
                     </span>
                   </div>
-                  <div style={{ 
-                    fontSize: '0.75em', 
-                    color: 'var(--text-muted)', 
+                  <div style={{
+                    fontSize: '0.75em',
+                    color: 'var(--text-muted)',
                     marginTop: 4,
                     fontFamily: 'monospace'
                   }}>

@@ -27,7 +27,7 @@ function CadastroUsuario() {
       .from("usuarios")
       .select("id, nome, email")
       .order("nome", { ascending: true });
-    
+
     if (!error) {
       setUsuarios(data || []);
     }
@@ -45,7 +45,7 @@ function CadastroUsuario() {
     } else {
       setMensagem("Usuário cadastrado com sucesso! ID: " + novoId);
       setIdUsuario(novoId);
-      setNome(""); 
+      setNome("");
       setEmail("");
       carregarUsuarios(); // Recarrega a lista
     }
@@ -53,30 +53,30 @@ function CadastroUsuario() {
 
   async function verAgenda(usuario) {
     setUsuarioSelecionado(usuario);
-    
+
     // Usa data local ao invés de UTC para evitar problemas de timezone
     const hoje = new Date();
-    const dataLocal = hoje.getFullYear() + '-' + 
-                     String(hoje.getMonth() + 1).padStart(2, '0') + '-' + 
-                     String(hoje.getDate()).padStart(2, '0');
-    
+    const dataLocal = hoje.getFullYear() + '-' +
+      String(hoje.getMonth() + 1).padStart(2, '0') + '-' +
+      String(hoje.getDate()).padStart(2, '0');
+
     console.log("🔍 [POPUP] Buscando agenda para usuário:");
     console.log("  - Nome:", usuario.nome);
     console.log("  - usuario.id:", usuario.id, "tipo:", typeof usuario.id);
     console.log("  - Data (local):", dataLocal);
-    
+
     const { data: eventos, error } = await supabase
       .from("agenda")
-      .select("hora, descricao")
+      .select("hora_inicio, hora_fim, descricao")
       .eq("usuario_id", usuario.id)
       .eq("data", dataLocal)
-      .order("hora", { ascending: true });
-    
+      .order("hora_inicio", { ascending: true });
+
     console.log("📋 [POPUP] Resultado da busca:");
     console.log("  - Erro:", error);
     console.log("  - Eventos encontrados:", eventos);
     console.log("  - Quantidade:", eventos?.length || 0);
-    
+
     if (!error) {
       setAgendaPopup(eventos || []);
       setMostrarPopup(true);
@@ -120,9 +120,9 @@ function CadastroUsuario() {
             <div style={{ fontSize: '0.9em', color: 'var(--text-muted)', textAlign: 'center', marginBottom: 12 }}>
               Clique em um usuário para ver a agenda de hoje
             </div>
-            <div style={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
               gap: 8,
               maxHeight: '400px',
               overflowY: 'auto',
@@ -232,15 +232,17 @@ function CadastroUsuario() {
                 <ul className="activity-list">
                   {agendaPopup.map((evento, i) => (
                     <li key={i} className="activity-item">
-                      <div className="activity-time">{evento.hora}</div>
+                      <div className="activity-time">
+                        {evento.hora_inicio} - {evento.hora_fim}
+                      </div>
                       <div>{evento.descricao}</div>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <div style={{ 
-                  textAlign: 'center', 
-                  padding: 40, 
+                <div style={{
+                  textAlign: 'center',
+                  padding: 40,
                   color: 'var(--text-muted)',
                   background: 'rgba(255,255,255,0.02)',
                   borderRadius: 8,

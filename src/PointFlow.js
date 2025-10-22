@@ -11,8 +11,6 @@ const bgAnim = {
   animation: "movebg 10s ease-in-out infinite alternate"
 };
 
-
-
 // Alternância via LocalStorage
 function getUltimoTipoLocal(usuario) {
   usuario = usuario.trim();
@@ -34,26 +32,26 @@ async function registrarPonto(usuario, tipo) {
     alert("Erro ao registrar ponto: " + error.message);
     console.log(error);
   } else {
-    console.log("Registro salvo!", data);
+    console.log("✅ Registro salvo com sucesso!", data);
   }
 }
 
 // Busca agenda personalizada do usuário para a data
 async function buscarAgendaUsuario(usuarioId, data) {
   console.log("🔎 Parametros busca - usuario_id:", usuarioId, "data:", data);
-  
+
   const { data: eventos, error } = await supabase
     .from("agenda")
-    .select("hora, descricao")
+    .select("hora_inicio, hora_fim, descricao")
     .eq("usuario_id", usuarioId)
     .eq("data", data)
-    .order("hora", { ascending: true });
-  
+    .order("hora_inicio", { ascending: true });
+
   if (error) {
     console.error("❌ Erro ao buscar agenda:", error);
     return [];
   }
-  
+
   console.log("✅ Resultado da query:", eventos);
   return eventos || [];
 }
@@ -61,80 +59,99 @@ async function buscarAgendaUsuario(usuarioId, data) {
 // Calcula total de horas na agenda do dia
 function calcularTotalHoras(eventos) {
   if (!eventos || eventos.length === 0) return 0;
-  
-  // Agrupa eventos em blocos contínuos (ex: 08:00-12:00, 13:00-17:00)
-  const horarios = eventos.map(e => {
-    const [h, m] = e.hora.split(':').map(Number);
-    return h + m / 60; // Converte para decimal (ex: 08:30 = 8.5)
-  }).sort((a, b) => a - b);
 
   let totalHoras = 0;
-  let inicio = horarios[0];
-  let ultimo = horarios[0];
 
-  for (let i = 1; i < horarios.length; i++) {
-    // Se a diferença for maior que 1 hora, considera um novo bloco
-    if (horarios[i] - ultimo > 1) {
-      totalHoras += ultimo - inicio;
-      inicio = horarios[i];
+  eventos.forEach(evento => {
+    if (evento.hora_inicio && evento.hora_fim) {
+      // Converte hora_inicio para decimal (ex: "08:30" -> 8.5)
+      const [hInicio, mInicio] = evento.hora_inicio.split(':').map(Number);
+      const inicioDecimal = hInicio + mInicio / 60;
+
+      // Converte hora_fim para decimal (ex: "12:00" -> 12.0)
+      const [hFim, mFim] = evento.hora_fim.split(':').map(Number);
+      const fimDecimal = hFim + mFim / 60;
+
+      // Calcula diferença
+      const duracao = fimDecimal - inicioDecimal;
+
+      if (duracao > 0) {
+        totalHoras += duracao;
+      }
     }
-    ultimo = horarios[i];
-  }
-  
-  // Adiciona o último bloco
-  totalHoras += ultimo - inicio;
-  
+  });
+
+  console.log("⏰ Total de horas calculado:", totalHoras);
   return Math.round(totalHoras * 10) / 10; // Arredonda para 1 casa decimal
 }
 
 function PointFlow() {
   const [atividades, setAtividades] = useState([]);
-  const [showScanner, setShowScanner] = useState(true); // Inicia com câmera aberta
+  const [showScanner, setShowScanner] = useState(true);
   const [mensagem, setMensagem] = useState("");
   const [tipoPonto, setTipoPonto] = useState("");
   const [totalHorasDia, setTotalHorasDia] = useState(0);
   const [fade, setFade] = useState("in");
+  const [pontoRegistrado, setPontoRegistrado] = useState(false); // NOVO: controla exibição
   const html5QrCodeRef = useRef(null);
   const timeoutRef = useRef(null);
   const agendaTimeoutRef = useRef(null);
+  const processandoRef = useRef(false);
+  const scannerAtivo = useRef(false); // NOVO: controla se scanner está ativo
 
   async function buscarAtividades(qrCodeMessage) {
-    const usuarioId = qrCodeMessage.trim();
-    console.log("🔍 Buscando atividades para:", usuarioId);
-    
-    // Usa data local ao invés de UTC para evitar problemas de timezone
-    const hoje = new Date();
-    const dataLocal = hoje.getFullYear() + '-' + 
-                     String(hoje.getMonth() + 1).padStart(2, '0') + '-' + 
-                     String(hoje.getDate()).padStart(2, '0');
-    console.log("📅 Data de hoje (local):", dataLocal);
-
-    // Busca agenda personalizada do usuário
-    let eventos = await buscarAgendaUsuario(usuarioId, dataLocal);
-    console.log("📋 Eventos encontrados:", eventos);
-    console.log("📊 Quantidade de eventos:", eventos?.length || 0);
-    
-    setAtividades(eventos);
-    
-    // Calcula total de horas se houver eventos
-    const totalHoras = calcularTotalHoras(eventos);
-    console.log("⏱️ Total de horas:", totalHoras);
-    setTotalHorasDia(totalHoras);
-    
-    if (!eventos.length) {
-      setMensagem("Nenhuma atividade cadastrada para hoje.");
+    if (processandoRef.current) {
+      console.log("⚠️ Busca já em andamento, ignorando...");
+      return;
     }
 
-    // Alternância instantânea via LocalStorage
-    let ultimoTipo = getUltimoTipoLocal(usuarioId);
-    let proximoTipo = (ultimoTipo === "entrada") ? "saida" : "entrada";
-    setUltimoTipoLocal(usuarioId, proximoTipo);
+    processandoRef.current = true;
+    console.log("🔍 Iniciando busca de atividades para:", qrCodeMessage);
 
-    setTipoPonto(proximoTipo);
-    setMensagem(
-      `Bem-vindo(a), ${usuarioId}! Seu registro foi marcado como "${proximoTipo.toUpperCase()}".`
-    );
-    await registrarPonto(usuarioId, proximoTipo);
+    try {
+      const usuarioId = qrCodeMessage.trim();
+
+      const hoje = new Date();
+      const dataLocal = hoje.getFullYear() + '-' +
+        String(hoje.getMonth() + 1).padStart(2, '0') + '-' +
+        String(hoje.getDate()).padStart(2, '0');
+      console.log("📅 Data de hoje (local):", dataLocal);
+
+      let eventos = await buscarAgendaUsuario(usuarioId, dataLocal);
+      console.log("📋 Eventos encontrados:", eventos);
+      console.log("📊 Quantidade de eventos:", eventos?.length || 0);
+
+      setAtividades(eventos);
+
+      const totalHoras = calcularTotalHoras(eventos);
+      console.log("⏱️ Total de horas:", totalHoras);
+      setTotalHorasDia(totalHoras);
+
+      if (!eventos.length) {
+        setMensagem("Nenhuma atividade cadastrada para hoje.");
+      }
+
+      let ultimoTipo = getUltimoTipoLocal(usuarioId);
+      let proximoTipo = (ultimoTipo === "entrada") ? "saida" : "entrada";
+      setUltimoTipoLocal(usuarioId, proximoTipo);
+
+      setTipoPonto(proximoTipo);
+      setMensagem(
+        `Bem-vindo(a), ${usuarioId}! Seu registro foi marcado como "${proximoTipo.toUpperCase()}".`
+      );
+
+      await registrarPonto(usuarioId, proximoTipo);
+      setPontoRegistrado(true); // NOVO: marca que ponto foi registrado
+      console.log("✅ Processo completo!");
+
+    } catch (error) {
+      console.error("❌ Erro no processo:", error);
+      setMensagem("Erro ao processar registro: " + error.message);
+    } finally {
+      setTimeout(() => {
+        processandoRef.current = false;
+      }, 2000); // Aumentado para 2 segundos
+    }
   }
 
   async function destroyScanner() {
@@ -142,48 +159,95 @@ function PointFlow() {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
     }
-    if (html5QrCodeRef.current) {
-      try { await html5QrCodeRef.current.stop(); } catch (e) {}
-      try { await html5QrCodeRef.current.clear(); } catch (e) {}
-      html5QrCodeRef.current = null;
+
+    const scanner = html5QrCodeRef.current;
+    html5QrCodeRef.current = null;
+    scannerAtivo.current = false;
+
+    if (scanner) {
+      try {
+        const state = await scanner.getState();
+        if (state === 2) { // 2 = SCANNING
+          await scanner.stop();
+          console.log("📷 Scanner parado");
+        }
+      } catch (e) {
+        console.log("⚠️ Scanner não estava rodando");
+      }
+      try {
+        await scanner.clear();
+      } catch (e) { }
     }
+
+    // Limpa o HTML do div reader
     const readerDiv = document.getElementById("reader");
-    if (readerDiv) readerDiv.innerHTML = "";
+    if (readerDiv) {
+      readerDiv.innerHTML = "";
+    }
   }
 
   useEffect(() => {
-    if (showScanner) {
-      html5QrCodeRef.current = new Html5Qrcode("reader");
-      html5QrCodeRef.current
-        .start(
+    let mounted = true; // Flag para controlar se o componente está montado
+
+    const initScanner = async () => {
+      // Limpa qualquer scanner existente primeiro
+      await destroyScanner();
+
+      if (!mounted || !showScanner) return;
+
+      console.log("📷 Iniciando scanner...");
+      scannerAtivo.current = true;
+
+      const scanner = new Html5Qrcode("reader");
+      html5QrCodeRef.current = scanner;
+
+      try {
+        await scanner.start(
           { facingMode: "environment" },
           { fps: 10, qrbox: 220 },
           async qrCodeMessage => {
-            if (timeoutRef.current) {
-              clearTimeout(timeoutRef.current);
-              timeoutRef.current = null;
+            if (!scannerAtivo.current || !mounted) {
+              console.log("⚠️ Scanner já foi parado, ignorando leitura");
+              return;
             }
+
+            console.log("📸 QR Code lido:", qrCodeMessage);
+
+            // Para o scanner antes de processar
             await destroyScanner();
             setShowScanner(false);
             setFade("in");
+
+            // Aguarda um pouco antes de processar
+            await new Promise(resolve => setTimeout(resolve, 300));
             await buscarAtividades(qrCodeMessage);
           },
-          errorMessage => {}
-        )
-        .catch(async err => {
-          setMensagem("Não foi possível acessar a câmera: " + err);
-          await destroyScanner();
-          setShowScanner(false);
-          setFade("in");
-        });
+          errorMessage => { }
+        );
+      } catch (err) {
+        console.error("❌ Erro ao iniciar câmera:", err);
+        setMensagem("Não foi possível acessar a câmera: " + err);
+        await destroyScanner();
+        setShowScanner(false);
+        setFade("in");
+      }
+    };
 
-      return () => { destroyScanner(); };
-    } else { destroyScanner(); }
-    // eslint-disable-next-line
+    if (showScanner && !html5QrCodeRef.current) {
+      initScanner();
+    } else if (!showScanner) {
+      destroyScanner();
+    }
+
+    return () => {
+      console.log("🧹 Limpando scanner no cleanup");
+      mounted = false;
+      destroyScanner();
+    };
   }, [showScanner]);
 
   useEffect(() => {
-    if (atividades.length > 0) {
+    if (pontoRegistrado && !agendaTimeoutRef.current) {
       agendaTimeoutRef.current = setTimeout(() => {
         setFade("out");
         setTimeout(() => {
@@ -191,8 +255,10 @@ function PointFlow() {
           setMensagem("");
           setTipoPonto("");
           setTotalHorasDia(0);
-          setShowScanner(true); // Reinicia o scanner após fechar a agenda
+          setPontoRegistrado(false);
+          setShowScanner(true);
           setFade("in");
+          agendaTimeoutRef.current = null;
         }, 300);
       }, 15000);
 
@@ -203,16 +269,22 @@ function PointFlow() {
         }
       };
     }
-  }, [atividades.length]);
+  }, [pontoRegistrado]);
 
   function backToMenu() {
+    if (agendaTimeoutRef.current) {
+      clearTimeout(agendaTimeoutRef.current);
+      agendaTimeoutRef.current = null;
+    }
+
     setFade("out");
     setTimeout(() => {
       setAtividades([]);
       setMensagem("");
       setTipoPonto("");
       setTotalHorasDia(0);
-      setShowScanner(true); // Reinicia o scanner ao voltar
+      setPontoRegistrado(false);
+      setShowScanner(true);
       setFade("in");
     }, 300);
   }
@@ -228,7 +300,7 @@ function PointFlow() {
           <h2 style={{ textAlign: 'center', marginBottom: 10 }}>PointFlow</h2>
           <div style={{ textAlign: 'center', color: 'var(--senac-yellow)', fontWeight: 700, marginBottom: showScanner ? 20 : 8 }}>Controle de Ponto Inteligente Senac</div>
 
-          {showScanner && atividades.length === 0 && (
+          {showScanner && !pontoRegistrado && (
             <div style={{ textAlign: 'center' }}>
               <div id="reader" style={{ width: 300, height: 300, margin: '0 auto', borderRadius: 16, background: '#0b1120', display: 'flex', alignItems: 'center', justifyContent: 'center' }}></div>
               <div style={{ marginTop: 18, color: 'var(--text-muted)' }}>
@@ -239,20 +311,35 @@ function PointFlow() {
             </div>
           )}
 
-          {atividades.length > 0 && (
+          {pontoRegistrado && (
             <div style={{ marginTop: 18 }}>
-              <h3 style={{ textAlign: 'center', marginBottom: 12 }}>Atividades do Dia</h3>
-              <div style={{ textAlign: 'center', marginBottom: 8 }}>
-                <span style={{ color: tipoPonto === 'entrada' ? 'var(--accent)' : '#fc5050', fontWeight: 800 }}>
-                  {tipoPonto === 'entrada' ? 'Ponto registrado como ENTRADA' : tipoPonto === 'saida' ? 'Ponto registrado como SAÍDA' : ''}
+              <h3 style={{ textAlign: 'center', marginBottom: 12 }}>
+                {atividades.length > 0 ? 'Atividades do Dia' : 'Ponto Registrado'}
+              </h3>
+              <div style={{ textAlign: 'center', marginBottom: 16 }}>
+                <span style={{ color: tipoPonto === 'entrada' ? 'var(--accent)' : '#fc5050', fontWeight: 800, fontSize: '1.2em' }}>
+                  {tipoPonto === 'entrada' ? '✅ Ponto registrado como ENTRADA' : tipoPonto === 'saida' ? '✅ Ponto registrado como SAÍDA' : ''}
                 </span>
               </div>
-              
+
+              {mensagem && (
+                <div style={{
+                  textAlign: 'center',
+                  marginBottom: 16,
+                  padding: '12px',
+                  background: 'rgba(249, 178, 51, 0.1)',
+                  borderRadius: 8,
+                  color: 'var(--senac-yellow)'
+                }}>
+                  {mensagem}
+                </div>
+              )}
+
               {tipoPonto === 'saida' && totalHorasDia > 0 && (
-                <div style={{ 
-                  textAlign: 'center', 
-                  marginBottom: 16, 
-                  padding: '12px', 
+                <div style={{
+                  textAlign: 'center',
+                  marginBottom: 16,
+                  padding: '12px',
                   background: 'linear-gradient(135deg, rgba(249, 178, 51, 0.15), rgba(23, 64, 140, 0.15))',
                   borderRadius: 12,
                   border: '2px solid var(--senac-yellow)'
@@ -260,9 +347,9 @@ function PointFlow() {
                   <div style={{ color: 'var(--senac-yellow)', fontSize: '0.9em', marginBottom: 4 }}>
                     📊 HOJE SEU DIA TEVE
                   </div>
-                  <div style={{ 
-                    fontSize: '1.8em', 
-                    fontWeight: 900, 
+                  <div style={{
+                    fontSize: '1.8em',
+                    fontWeight: 900,
                     background: 'linear-gradient(90deg, var(--senac-yellow) 30%, var(--accent) 70%)',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent'
@@ -274,16 +361,21 @@ function PointFlow() {
                   </div>
                 </div>
               )}
-              
-              <ul className="activity-list">
-                {atividades.map((a, i) => (
-                  <li key={i} className="activity-item">
-                    <div className="activity-time">{a.hora}</div>
-                    <div>{a.descricao}</div>
-                  </li>
-                ))}
-              </ul>
-              <div style={{ color: 'var(--senac-yellow)', textAlign: 'center', marginTop: 8 }}>Esta agenda será fechada automaticamente em 15 segundos.</div>
+
+              {atividades.length > 0 && (
+                <ul className="activity-list">
+                  {atividades.map((a, i) => (
+                    <li key={i} className="activity-item">
+                      <div className="activity-time">
+                        {a.hora_inicio} - {a.hora_fim}
+                      </div>
+                      <div>{a.descricao}</div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <div style={{ color: 'var(--senac-yellow)', textAlign: 'center', marginTop: 12 }}>Esta tela será fechada automaticamente em 15 segundos.</div>
               <button className="btn btn-ghost" style={{ marginTop: 14 }} onClick={backToMenu}>Voltar agora</button>
             </div>
           )}
