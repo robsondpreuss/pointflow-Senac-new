@@ -95,7 +95,14 @@ function CadastroAgenda() {
         {eventosRecentes.length > 0 && (
           <div className="card" style={{ maxWidth: 720, margin: '0 auto' }}>
             <h3 style={{ textAlign: 'center', marginBottom: 16 }}>Últimos Eventos Cadastrados</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: 8,
+              maxHeight: '400px',
+              overflowY: 'auto',
+              paddingRight: 8
+            }}>
               {eventosRecentes.map((evento, idx) => (
                 <div
                   key={idx}

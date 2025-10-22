@@ -240,28 +240,37 @@ input:focus, select:focus, textarea:focus {
   .main-container {
     padding: 12px 4px;
     max-width: 98vw;
+    overflow-y: auto;
   }
   
   body {
     overflow-y: auto;
+    height: auto;
   }
   
   .page-wrapper {
     padding-top: 200px;
     padding-bottom: 20px;
+    align-items: flex-start;
+  }
+  
+  .center-card {
+    padding: 12px;
   }
 }
 
 /* Center page main area */
 .page-wrapper {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   min-height: 100vh;
   padding-top: 80px;
+  padding-bottom: 40px;
   overflow-y: auto;
 }
 .center-card {
   width: 100%;
   max-width: 760px;
+  padding: 20px;
 }

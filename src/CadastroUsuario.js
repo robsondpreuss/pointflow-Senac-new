@@ -120,7 +120,14 @@ function CadastroUsuario() {
             <div style={{ fontSize: '0.9em', color: 'var(--text-muted)', textAlign: 'center', marginBottom: 12 }}>
               Clique em um usuário para ver a agenda de hoje
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: 8,
+              maxHeight: '400px',
+              overflowY: 'auto',
+              paddingRight: 8
+            }}>
               {usuarios.map(usuario => (
                 <div
                   key={usuario.id}
