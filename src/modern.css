@@ -544,3 +544,36 @@ textarea:focus {
     height: 220px !important;
   }
 }
+
+/* Form row responsive - para campos de data/hora */
+.form-row-responsive {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.form-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.form-field label {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.form-field input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 600px) {
+  .form-row-responsive {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .form-field {
+    width: 100%;
+  }
+}

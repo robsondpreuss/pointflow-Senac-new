@@ -78,16 +78,16 @@ function CadastroAgenda() {
               <option value="">Selecione o usuário</option>
               {usuarios.map(u => <option key={u.id} value={u.id}>{u.nome} ({u.id})</option>)}
             </select>
-            <div style={{ display: 'flex', gap: 12 }}>
-              <div style={{ flex: 1 }}>
+            <div className="form-row-responsive">
+              <div className="form-field">
                 <label>Data</label>
                 <input type="date" value={data} onChange={e => setData(e.target.value)} required />
               </div>
-              <div style={{ flex: 1 }}>
+              <div className="form-field">
                 <label>Hora Início</label>
                 <input type="time" value={horaInicio} onChange={e => setHoraInicio(e.target.value)} required />
               </div>
-              <div style={{ flex: 1 }}>
+              <div className="form-field">
                 <label>Hora Fim</label>
                 <input type="time" value={horaFim} onChange={e => setHoraFim(e.target.value)} required />
               </div>
