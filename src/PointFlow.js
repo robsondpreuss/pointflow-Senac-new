@@ -93,6 +93,7 @@ function PointFlow() {
   const [totalHorasDia, setTotalHorasDia] = useState(0);
   const [fade, setFade] = useState("in");
   const [pontoRegistrado, setPontoRegistrado] = useState(false); // NOVO: controla exibição
+  const [cameraAtiva, setCameraAtiva] = useState(""); // NOVO: indica qual câmera está ativa
   const html5QrCodeRef = useRef(null);
   const timeoutRef = useRef(null);
   const agendaTimeoutRef = useRef(null);
@@ -201,29 +202,56 @@ function PointFlow() {
       const scanner = new Html5Qrcode("reader");
       html5QrCodeRef.current = scanner;
 
+      // Função para tentar iniciar o scanner
+      const tentarIniciarCamera = async (facingMode) => {
+        try {
+          console.log(`🎥 Tentando câmera: ${facingMode}`);
+          await scanner.start(
+            { facingMode: facingMode },
+            { fps: 10, qrbox: 220 },
+            async qrCodeMessage => {
+              if (!scannerAtivo.current || !mounted) {
+                console.log("⚠️ Scanner já foi parado, ignorando leitura");
+                return;
+              }
+
+              console.log("📸 QR Code lido:", qrCodeMessage);
+
+              // Para o scanner antes de processar
+              await destroyScanner();
+              setShowScanner(false);
+              setFade("in");
+
+              // Aguarda um pouco antes de processar
+              await new Promise(resolve => setTimeout(resolve, 300));
+              await buscarAtividades(qrCodeMessage);
+            },
+            errorMessage => { }
+          );
+          console.log(`✅ Câmera ${facingMode} iniciada com sucesso`);
+          setCameraAtiva(facingMode === "user" ? "frontal" : "traseira");
+          return true;
+        } catch (err) {
+          console.log(`⚠️ Falha ao usar câmera ${facingMode}:`, err.message);
+          return false;
+        }
+      };
+
       try {
-        await scanner.start(
-          { facingMode: "environment" },
-          { fps: 10, qrbox: 220 },
-          async qrCodeMessage => {
-            if (!scannerAtivo.current || !mounted) {
-              console.log("⚠️ Scanner já foi parado, ignorando leitura");
-              return;
-            }
+        // Tenta primeiro a câmera frontal (user)
+        let sucesso = await tentarIniciarCamera("user");
 
-            console.log("📸 QR Code lido:", qrCodeMessage);
+        // Se falhar, tenta a câmera traseira (environment)
+        if (!sucesso) {
+          console.log("🔄 Tentando câmera traseira...");
+          sucesso = await tentarIniciarCamera("environment");
+        }
 
-            // Para o scanner antes de processar
-            await destroyScanner();
-            setShowScanner(false);
-            setFade("in");
+        // Se nenhuma funcionar, mostra erro
+        if (!sucesso) {
+          throw new Error("Não foi possível acessar nenhuma câmera");
+        }
 
-            // Aguarda um pouco antes de processar
-            await new Promise(resolve => setTimeout(resolve, 300));
-            await buscarAtividades(qrCodeMessage);
-          },
-          errorMessage => { }
-        );
       } catch (err) {
         console.error("❌ Erro ao iniciar câmera:", err);
         setMensagem("Não foi possível acessar a câmera: " + err);
@@ -256,6 +284,7 @@ function PointFlow() {
           setTipoPonto("");
           setTotalHorasDia(0);
           setPontoRegistrado(false);
+          setCameraAtiva(""); // Reseta indicador de câmera
           setShowScanner(true);
           setFade("in");
           agendaTimeoutRef.current = null;
@@ -284,6 +313,7 @@ function PointFlow() {
       setTipoPonto("");
       setTotalHorasDia(0);
       setPontoRegistrado(false);
+      setCameraAtiva(""); // Reseta indicador de câmera
       setShowScanner(true);
       setFade("in");
     }, 300);
@@ -305,7 +335,9 @@ function PointFlow() {
               <div id="reader" style={{ width: 300, height: 300, margin: '0 auto', borderRadius: 16, background: '#0b1120', display: 'flex', alignItems: 'center', justifyContent: 'center' }}></div>
               <div style={{ marginTop: 18, color: 'var(--text-muted)' }}>
                 <div style={{ background: 'linear-gradient(90deg,var(--senac-yellow) 40%, var(--senac-blue) 60%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 700 }}>Aponte o QR Code do seu crachá</div>
-                <div style={{ color: 'var(--senac-yellow)', marginTop: 8, opacity: 0.9 }}>Câmera pronta para leitura</div>
+                <div style={{ color: 'var(--senac-yellow)', marginTop: 8, opacity: 0.9 }}>
+                  {cameraAtiva ? `Câmera ${cameraAtiva} ativa` : 'Iniciando câmera...'}
+                </div>
               </div>
               {mensagem && <div style={{ color: '#fc5050', textAlign: 'center', marginTop: 12, fontSize: '0.95em' }}>{mensagem}</div>}
             </div>
